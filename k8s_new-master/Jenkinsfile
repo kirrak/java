@@ -1,0 +1,40 @@
+pipeline {
+    agent 'any'
+    tools {
+        jdk 'jdk1.8'
+        maven 'maven3'
+    }
+    stages {
+        stage('git pull'){
+            steps{
+               git 'https://gitlab.com/jagarlamudirajesh34/7am_k8s_new.git'
+            }
+        }
+        stage('maven'){
+            steps{
+                sh 'mvn clean'
+                sh 'mvn package'
+            }
+        }
+        stage('docker image'){
+            steps{
+                sh 'docker --version'
+                sh 'docker build -t myapp:1 .'
+            }
+        }
+        stage('Push to ECR'){
+            steps{
+                sh '$(aws ecr get-login --no-include-email)'
+                sh 'docker tag myapp:1 102709566536.dkr.ecr.ap-south-1.amazonaws.com/myapp:1'
+                sh 'docker push 102709566536.dkr.ecr.ap-south-1.amazonaws.com/myapp:1'
+            }
+        }
+        stage('deploymeent'){
+            steps{
+                sh 'rm -rf /var/lib/jenkins/.kube && aws eks update-kubeconfig --name 7am_batch'
+                sh "kubectl apply -f deployment.yaml"
+                sh "kubectl apply -f service.yaml"
+            }
+        }
+    }
+}
